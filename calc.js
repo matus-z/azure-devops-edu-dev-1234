@@ -44,8 +44,10 @@
 
   function historyMalus(priorClaims) {
     // F3: reduce the payout by 10% per previous claim.
+    // F3.1: fixes the F3 sign bug (`+` -> `-`) so previous claims now
+    // correctly REDUCE the payout.
     var n = Number(priorClaims) || 0;
-    return 1 + 0.1 * n;
+    return 1 - 0.1 * n;
   }
 
   global.InsuranceCalc = {
