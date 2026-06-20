@@ -24,7 +24,6 @@
       country: document.getElementById("country").value,
       region: document.getElementById("region").value,
       damage: Number(document.getElementById("damage").value),
-      deductible: Number(document.getElementById("deductible").value),
       priorClaims: Number(document.getElementById("priorClaims").value) || 0
     };
   }
@@ -33,7 +32,6 @@
     var who = input.customerName ? input.customerName : "The policyholder";
     resultSummary.textContent =
       who + " — damage " + formatCZK(input.damage) +
-      ", deductible " + formatCZK(input.deductible) +
       " (" + input.region + ", " + input.country + ").";
     resultValue.textContent = formatCZK(payout);
     resultSection.hidden = false;

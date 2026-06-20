@@ -16,24 +16,22 @@
    *
    * @param {Object} input
    * @param {number} input.damage      - Damage amount in CZK.
-   * @param {number} input.deductible  - Deductible in CZK.
    * @param {string} [input.region]    - Region; drives the region coefficient.
    * @param {number} [input.priorClaims] - Previous claims count; drives the malus.
    * @returns {number} The calculated payout in CZK (never negative).
    */
   function calculatePayout(input) {
     var damage = Number(input.damage) || 0;
-    var deductible = Number(input.deductible) || 0;
 
-    // payout = max(0, damage - deductible) * regionCoefficient * historyMalus
-    var payout = Math.max(0, damage - deductible)
+    // payout = max(0, damage) * regionCoefficient * historyMalus
+    var payout = Math.max(0, damage)
       * regionCoefficient(input.region)
       * historyMalus(input.priorClaims);
 
     // Hand the result to the hook extension point before returning. Hooks
     // replace `finalize` to adjust the final payout. The context
     // gives them what they need (e.g. raw damage for a percentage deductible).
-    var context = { input: input, damage: damage, deductible: deductible, base: payout };
+    var context = { input: input, damage: damage, base: payout };
     return global.InsuranceCalc.finalize(payout, context);
   }
 
