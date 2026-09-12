@@ -21,6 +21,9 @@
 #  by ho vidieť, aby chápali, čo sa deje na druhej strane dodávky: dodávateľ
 #  testuje u seba, a až potom vznikne tag, na ktorý sa odkazuje konfiguračný
 #  repozitár.
+#
+#  Dlhšie kroky nie sú inline — sú v `ci\*.ps1`, aby sa dali spustiť a ladiť
+#  aj lokálne, mimo pipeline. Inline tu ostávajú len jednoriadkové príkazy.
 # =============================================================================
 
 trigger:
@@ -59,31 +62,11 @@ stages:
         versionSpec: '20.x'
       displayName: Node.js
 
-    - powershell: |
-        # Celá aplikácia leží v `src\` — preto je build obyčajné skopírovanie
-        # priečinka. Nový súbor (napr. ďalší hook) sa do balíka dostane sám,
-        # bez zásahu do pipeline. `tests\` a `README.md` sú mimo `src\`,
-        # takže sa do balíka nedostanú.
-        $required = @('src\index.html', 'src\style.css', 'src\calc.js', 'src\app.js')
-        $missing  = $required | Where-Object { -not (Test-Path $_) }
-        if ($missing) {
-          Write-Host "##vso[task.logissue type=error]Chýbajú súbory: $($missing -join ', ')"
-          exit 1
-        }
-        New-Item -ItemType Directory -Force -Path dist | Out-Null
-        Copy-Item src\* dist\ -Recurse -Force
-        Get-ChildItem dist -Recurse -File | Select-Object FullName
+    - powershell: .\ci\Build-Package.ps1 -Source src -Destination dist
       displayName: Build — príprava dist/
 
-    # Aplikácia sa musí dať otvoriť dvojklikom. Ak sa niekomu podarí pridať
-    # `type="module"`, prehliadač ju z `file://` odmietne načítať — a zistíme
-    # to až na workshope. Preto to kontrolujeme tu.
-    - powershell: |
-        if (Select-String -Path dist\index.html -Pattern 'type\s*=\s*"module"' -Quiet) {
-          Write-Host "##vso[task.logissue type=error]index.html obsahuje type=module — aplikácia sa neotvorí z file://"
-          exit 1
-        }
-        Write-Host "OK — aplikácia sa dá otvoriť dvojklikom."
+    # Aplikácia sa musí dať otvoriť dvojklikom — `type="module"` by to rozbilo.
+    - powershell: .\ci\Test-FileProtocol.ps1 -Page dist\index.html
       displayName: Kontrola — otvoriteľnosť z file://
 
     - publish: dist
@@ -128,18 +111,7 @@ stages:
         versionSpec: '20.x'
       displayName: Node.js
 
-    - powershell: |
-        # Syntaktická kontrola bez spustenia — zachytí preklep, ktorý by
-        # inak spadol až v prehliadači.
-        $scripts = Get-ChildItem src -Recurse -Filter *.js | ForEach-Object { $_.FullName }
-        foreach ($s in $scripts) {
-          node --check $s
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "##vso[task.logissue type=error]$s má syntaktickú chybu"
-            exit 1
-          }
-        }
-        Write-Host "OK — všetky skripty sú syntakticky v poriadku."
+    - powershell: .\ci\Test-JavaScriptSyntax.ps1 -Path src
       displayName: Kontrola syntaxe
 
 # -----------------------------------------------------------------------------
@@ -177,24 +149,5 @@ stages:
     - checkout: self
       fetchDepth: 0          # potrebujeme celú históriu, nie plytký klon
 
-    - powershell: |
-        $tag = "$(Build.SourceBranchName)"
-        Write-Host "Kontrolujem tag: $tag"
-
-        # Formát verzie
-        if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
-          Write-Host "##vso[task.logissue type=error]Tag '$tag' nemá tvar vX.Y.Z"
-          exit 1
-        }
-
-        # Tag musí ukazovať na commit, ktorý je v main
-        git fetch origin main --quiet
-        $sha = git rev-list -n 1 $tag
-        git merge-base --is-ancestor $sha origin/main
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "##vso[task.logissue type=error]Tag '$tag' neukazuje na commit v main"
-          exit 1
-        }
-
-        Write-Host "OK — $tag ukazuje na $sha, ktorý je v main."
+    - powershell: .\ci\Test-ReleaseTag.ps1 -Tag "$(Build.SourceBranchName)" -Branch main
       displayName: Overenie tagu

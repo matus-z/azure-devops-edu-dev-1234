@@ -20,6 +20,7 @@ Fill in the policyholder and claim details, then click **Calculate payout**.
 | `src/app.js`        | UI glue — reads the form, calls the core, renders the result.   |
 | `src/hooks/`        | Optional hooks that replace `InsuranceCalc.finalize`.           |
 | `tests/`            | Automated tests (`node --test`).                                |
+| `ci/`               | PowerShell scripts the pipeline steps call.                     |
 | `azure-pipelines.yml` | The pipeline — see below.                                     |
 
 Everything that ships lives under `src/`, and nothing else does. That is what
@@ -95,7 +96,28 @@ tag-triggered runs and is skipped otherwise.
 | `Package`      | Republishes the verified build as the `app` artifact.               |
 | `VersionCheck` | Tag runs only: the tag must be `vX.Y.Z` and point at a commit in `main`. |
 
-The config repo (`kalkulacka-config`) consumes the tag this pipeline verifies.
+The config repo consumes the tag this pipeline verifies.
+
+### `ci/`
+
+Anything longer than a one-liner lives in a script rather than inline in the
+YAML, so it can be run and debugged locally — `.\ci\Build-Package.ps1` behaves
+the same on a workstation as it does on the agent. Only the single-line test
+command is still inline.
+
+| Script                       | Called by      |
+| ---------------------------- | -------------- |
+| `Build-Package.ps1`          | `Build`        |
+| `Test-FileProtocol.ps1`      | `Build`        |
+| `Test-JavaScriptSyntax.ps1`  | `Verify / lint`|
+| `Test-ReleaseTag.ps1`        | `VersionCheck` |
+
+Names follow PowerShell's `Verb-Noun` convention using approved verbs, so
+`Get-Verb` stays meaningful and the scripts read the same way as any other
+cmdlet. Each takes parameters with sensible defaults instead of reading
+pipeline variables directly — that is what makes them runnable outside CI.
+Failures are reported with `##vso[task.logissue type=error]` and a non-zero
+exit code.
 
 ## Extending the calculation
 
