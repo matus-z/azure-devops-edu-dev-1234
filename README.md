@@ -6,19 +6,26 @@ server, no npm install.
 
 ## Usage
 
-Open `index.html` in a browser.
+Open `src/index.html` in a browser.
 
 Fill in the policyholder and claim details, then click **Calculate payout**.
 
 ## Project structure
 
-| File         | Responsibility                                                        |
-| ------------ | --------------------------------------------------------------------- |
-| `index.html` | Form markup and page layout.                                          |
-| `style.css`  | Styling.                                                              |
-| `calc.js`    | Core payout calculation (`InsuranceCalc.calculatePayout`).            |
-| `app.js`     | UI glue — reads the form, calls the core, renders the result.         |
-| `tests/`     | Automated tests (`node --test`).                                      |
+| Path                | Responsibility                                                  |
+| ------------------- | --------------------------------------------------------------- |
+| `src/index.html`    | Form markup and page layout.                                    |
+| `src/style.css`     | Styling.                                                        |
+| `src/calc.js`       | Core payout calculation (`InsuranceCalc.calculatePayout`).      |
+| `src/app.js`        | UI glue — reads the form, calls the core, renders the result.   |
+| `src/hooks/`        | Optional hooks that replace `InsuranceCalc.finalize`.           |
+| `tests/`            | Automated tests (`node --test`).                                |
+| `azure-pipelines.yml` | The pipeline — see below.                                     |
+
+Everything that ships lives under `src/`, and nothing else does. That is what
+lets the pipeline build the package with a plain directory copy: a new file in
+`src/` reaches the artifact on its own, and `tests/` and this README stay out of
+it without having to be excluded.
 
 The calculation logic (`calc.js`) is deliberately kept separate from the UI glue
 (`app.js`) so that changes to the formula only touch `calc.js`.
@@ -48,7 +55,18 @@ Tests named `KNOWN GAP:` pin behaviour that today contradicts what the code
 documents. They are there so the behaviour is visible and so a future fix
 shows up as a failing test rather than a silent change.
 
-`azure-pipelines.yml` runs the same command in a single step.
+## Pipeline
+
+`azure-pipelines.yml` — Build → (Testy ‖ Statická kontrola) → Balík → Kontrola verzie.
+
+| Stage          | What it does                                                        |
+| -------------- | ------------------------------------------------------------------- |
+| `Build`        | Checks the required files exist, copies `src/` into `dist/`, guards against `type="module"`. |
+| `Verify`       | Two parallel jobs: `node --test tests\` and `node --check` over every script in `src/`. |
+| `Package`      | Republishes the verified build as the `app` artifact.               |
+| `VersionCheck` | Tag runs only: the tag must be `vX.Y.Z` and point at a commit in `main`. |
+
+The config repo (`kalkulacka-config`) consumes the tag this pipeline verifies.
 
 ## Extending the calculation
 

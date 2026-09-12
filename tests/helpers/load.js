@@ -15,7 +15,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const APP_ROOT = path.join(__dirname, "..", "..");
+const APP_ROOT = path.join(__dirname, "..", "..", "src");
 
 /** Every element id app.js is allowed to ask for. */
 const ELEMENT_IDS = [
