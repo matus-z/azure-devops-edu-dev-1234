@@ -18,9 +18,37 @@ Fill in the policyholder and claim details, then click **Calculate payout**.
 | `style.css`  | Styling.                                                              |
 | `calc.js`    | Core payout calculation (`InsuranceCalc.calculatePayout`).            |
 | `app.js`     | UI glue — reads the form, calls the core, renders the result.         |
+| `tests/`     | Automated tests (`node --test`).                                      |
 
 The calculation logic (`calc.js`) is deliberately kept separate from the UI glue
 (`app.js`) so that changes to the formula only touch `calc.js`.
+
+## Tests
+
+The tests run on the Node.js built-in test runner — no dependencies, no
+`npm install`:
+
+```
+node --test tests/
+```
+
+Each test loads the browser scripts into a fresh `vm` context with a `window`
+object, and — for `app.js` — a minimal fake `document`
+(`tests/helpers/load.js`). A fresh context per test matters: hooks *replace*
+`InsuranceCalc.finalize`, so leaked state would quietly change what is being
+measured.
+
+| File                    | Covers                                                     |
+| ----------------------- | ---------------------------------------------------------- |
+| `tests/calc.test.js`    | The core formula and the `finalize` extension point.        |
+| `tests/hooks.test.js`   | Each hook on its own, and the two of them together.         |
+| `tests/app.test.js`     | Reading the form, calling the core, rendering the result.   |
+
+Tests named `KNOWN GAP:` pin behaviour that today contradicts what the code
+documents. They are there so the behaviour is visible and so a future fix
+shows up as a failing test rather than a silent change.
+
+`azure-pipelines.yml` runs the same command in a single step.
 
 ## Extending the calculation
 
