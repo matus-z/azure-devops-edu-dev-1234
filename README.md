@@ -111,6 +111,13 @@ command is still inline.
 | `Test-FileProtocol.ps1`      | `Build`        |
 | `Test-JavaScriptSyntax.ps1`  | `Verify / lint`|
 | `Test-ReleaseTag.ps1`        | `VersionCheck` |
+| `Test-NodeVersion.ps1`       | `Verify` (both jobs) |
+
+The pipeline does not install Node — `Test-NodeVersion.ps1` only checks that
+the agent already has v20 or newer and fails with a clear message if it does
+not. Installing Node is part of preparing the machines in the pool, not part of
+every run: the agents are on-prem and a per-run download is both slow and a
+dependency on internet access they may not have.
 
 Names follow PowerShell's `Verb-Noun` convention using approved verbs, so
 `Get-Verb` stays meaningful and the scripts read the same way as any other

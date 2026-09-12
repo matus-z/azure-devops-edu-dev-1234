@@ -53,6 +53,10 @@ stages:
   jobs:
   - job: build
     displayName: Zostavenie aplikácie
+    # Agenti v pooli sú vlastné stroje a workspace sa medzi behmi recykluje.
+    # Bez tohto by `dist\` ťahal staré súbory z predchádzajúcej verzie.
+    workspace:
+      clean: all
     steps:
 
     - checkout: self
@@ -83,6 +87,8 @@ stages:
 
   - job: test
     displayName: Automatické testy
+    workspace:
+      clean: all
     steps:
     - checkout: self
     - task: NodeTool@0
@@ -104,6 +110,8 @@ stages:
 
   - job: lint
     displayName: Statická kontrola
+    workspace:
+      clean: all
     steps:
     - checkout: self
     - task: NodeTool@0
@@ -123,6 +131,8 @@ stages:
   jobs:
   - job: package
     displayName: Publikovanie overeného balíka
+    workspace:
+      clean: all
     steps:
     - checkout: none
     - download: current
@@ -145,6 +155,8 @@ stages:
   jobs:
   - job: versioncheck
     displayName: Tag ukazuje na main
+    workspace:
+      clean: all
     steps:
     - checkout: self
       fetchDepth: 0          # potrebujeme celú históriu, nie plytký klon
