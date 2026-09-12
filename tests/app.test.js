@@ -164,3 +164,20 @@ test("app.js renders whatever the loaded hooks decide", () => {
     "the UI must not carry its own copy of the formula"
   );
 });
+
+// The config repo's pipeline replaces `__VERSION__` when it builds a release.
+// Nothing at run time would notice the slot missing — the substitution would
+// simply do nothing and the page would ship without a version — so the
+// contract is pinned here.
+//
+// Both spellings are accepted on purpose: these tests run against the source
+// (placeholder still in place) in the vendor pipeline, and against the built
+// package (placeholder already replaced) in the config pipeline.
+test("index.html carries a version slot for the release build to fill", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const { APP_ROOT } = require("./helpers/load.js");
+  const html = fs.readFileSync(path.join(APP_ROOT, "index.html"), "utf8");
+
+  assert.match(html, /id="appVersion">(__VERSION__|v\d+\.\d+\.\d+)</);
+});
