@@ -57,7 +57,36 @@ shows up as a failing test rather than a silent change.
 
 ## Pipeline
 
-`azure-pipelines.yml` — Build → (Testy ‖ Statická kontrola) → Balík → Kontrola verzie.
+`azure-pipelines.yml` — four stages, left to right. Everything a stage does is
+drawn inside its own container; jobs stacked on top of each other run in
+parallel, jobs side by side run one after the other.
+
+```mermaid
+flowchart LR
+  subgraph S1["1 · Build"]
+    b["Zostavenie aplikácie<br/>src/ → dist/"]
+  end
+  subgraph S2["2 · Overenie — dva joby súbežne"]
+    t["Automatické testy<br/>node --test tests/"]
+    l["Statická kontrola<br/>node --check src/"]
+  end
+  subgraph S3["3 · Balík"]
+    p["Publikovanie overeného balíka<br/>artefakt app"]
+  end
+  subgraph S4["4 · Kontrola verzie"]
+    v["Tag ukazuje na main<br/>len pri behu z tagu v*"]
+  end
+  b --> t
+  b --> l
+  t --> p
+  l --> p
+  t -.-> v
+  l -.-> v
+```
+
+`Package` and `VersionCheck` both depend on `Verify` only, so they too run in
+parallel — the dashed edges mark `VersionCheck` as conditional: it runs on
+tag-triggered runs and is skipped otherwise.
 
 | Stage          | What it does                                                        |
 | -------------- | ------------------------------------------------------------------- |

@@ -1,7 +1,21 @@
 # =============================================================================
 #  Kalkulačka poistenia — pipeline dodávateľa (repozitár `kalkulacka-dodavatel`)
 #
-#  Build → (Testy ‖ Statická kontrola) → Balík → Kontrola tagu
+#                          ┌─ 2 · Overenie ────────┐      ┌─ 3 · Balík ─────────────┐
+#                          │                       │      │ ┌─────────────────────┐ │
+#  ┌─ 1 · Build ──────┐    │                       │  ┌──▶│ │ artefakt `app`      │ │
+#  │                  │    │ ┌───────────────────┐ │  │   │ └─────────────────────┘ │
+#  │ ┌──────────────┐ │    │ │ Automatické testy │ │  │   └─────────────────────────┘
+#  │ │ Zostavenie   │ │    │ └───────────────────┘ │  │
+#  │ │ src/ → dist/ │ │───▶│   ‖ súbežne           │──┤
+#  │ └──────────────┘ │    │ ┌───────────────────┐ │  │
+#  └──────────────────┘    │ │ Statická kontrola │ │  │
+#                          │ └───────────────────┘ │  │
+#                          │                       │  │   ┌─ 4 · Kontrola verzie ───┐
+#                          └───────────────────────┘  │   │ ┌─────────────────────┐ │
+#                                                     └──▶│ │ Tag ukazuje na main │ │
+#                                                         │ └─────────────────────┘ │
+#                                                         └─ len pri tagu v* ───────┘
 #
 #  Tento súbor patrí dodávateľovi. Účastníci workshopu doň nesiahajú — ale mali
 #  by ho vidieť, aby chápali, čo sa deje na druhej strane dodávky: dodávateľ
