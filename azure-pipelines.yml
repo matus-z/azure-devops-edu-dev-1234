@@ -34,7 +34,7 @@ trigger:
       - 'azure-*'     # Azure testing
   tags:
     include:
-      - 'v*'          # tag spustí beh navyše — pozri stage TagGuard
+      - 'v*'          # tag spustí beh navyše — pozri stage VersionCheck
 
 pr:
   branches:
@@ -66,11 +66,11 @@ stages:
     # samotný `src/`. Build tu znamená overenie, nie zostavenie — pipeline
     # nevytvára žiadny priečinok, takže nepotrebuje ani právo zápisu doň.
     # Node sa tu nepoužíva, preto sa tu nič neinštaluje ani neoveruje.
-    - bash: ./ci/test-package-contents.sh --path src
+    - bash: bash ./ci/test-package-contents.sh --path src
       displayName: Kontrola — balík obsahuje povinné súbory
 
     # Aplikácia sa musí dať otvoriť dvojklikom — `type="module"` by to rozbilo.
-    - bash: ./ci/test-file-protocol.sh --page src/index.html
+    - bash: bash ./ci/test-file-protocol.sh --page src/index.html
       displayName: Kontrola — otvoriteľnosť z file://
 
     - publish: src
@@ -94,7 +94,7 @@ stages:
     # Node je na agentoch nainštalovaný pri príprave stroja — pipeline ho
     # nesťahuje. `NodeTool@0` by ho ťahal z internetu pri každom behu, čo na
     # on-prem agentoch bez konektivity (alebo za TLS proxy) zlyhá.
-    - bash: ./ci/test-node-version.sh --minimum-major 20
+    - bash: bash ./ci/test-node-version.sh --minimum-major 20
       displayName: Kontrola — Node.js na agentovi
 
     - bash: |
@@ -118,10 +118,10 @@ stages:
     # Node je na agentoch nainštalovaný pri príprave stroja — pipeline ho
     # nesťahuje. `NodeTool@0` by ho ťahal z internetu pri každom behu, čo na
     # on-prem agentoch bez konektivity (alebo za TLS proxy) zlyhá.
-    - bash: ./ci/test-node-version.sh --minimum-major 20
+    - bash: bash ./ci/test-node-version.sh --minimum-major 20
       displayName: Kontrola — Node.js na agentovi
 
-    - bash: ./ci/test-javascript-syntax.sh --path src
+    - bash: bash ./ci/test-javascript-syntax.sh --path src
       displayName: Kontrola syntaxe
 
 # -----------------------------------------------------------------------------
@@ -161,7 +161,8 @@ stages:
       clean: all
     steps:
     - checkout: self
+      persistCredentials: true
       fetchDepth: 0          # potrebujeme celú históriu, nie plytký klon
 
-    - bash: ./ci/test-release-tag.sh --tag "$(Build.SourceBranchName)" --branch main
+    - bash: bash ./ci/test-release-tag.sh --tag "$(Build.SourceBranchName)" --branch main
       displayName: Overenie tagu
