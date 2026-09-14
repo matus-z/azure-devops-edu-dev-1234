@@ -8,11 +8,11 @@
     kontroluje tu, nad zostaveným balíkom.
 
 .EXAMPLE
-    .\ci\Test-FileProtocol.ps1 -Page dist\index.html
+    ./ci/Test-FileProtocol.ps1 -Page dist/index.html
 #>
 [CmdletBinding()]
 param(
-    [string] $Page = 'dist\index.html'
+    [string] $Page = 'dist/index.html'
 )
 
 $ErrorActionPreference = 'Stop'

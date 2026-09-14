@@ -7,7 +7,7 @@
     Súbory sa hľadajú rekurzívne, takže nový hook je pokrytý automaticky.
 
 .EXAMPLE
-    .\ci\Test-JavaScriptSyntax.ps1 -Path src
+    ./ci/Test-JavaScriptSyntax.ps1 -Path src
 #>
 [CmdletBinding()]
 param(

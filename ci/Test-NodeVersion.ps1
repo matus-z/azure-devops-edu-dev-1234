@@ -11,7 +11,7 @@
     Ak Node chýba alebo je starý, zlyhá hlasne a s návodom čo urobiť.
 
 .EXAMPLE
-    .\ci\Test-NodeVersion.ps1 -MinimumMajor 20
+    ./ci/Test-NodeVersion.ps1 -MinimumMajor 20
 #>
 [CmdletBinding()]
 param(

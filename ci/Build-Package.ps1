@@ -1,15 +1,15 @@
 <#
 .SYNOPSIS
-    Zostaví balík aplikácie: overí povinné súbory a skopíruje `src\` do `dist\`.
+    Zostaví balík aplikácie: overí povinné súbory a skopíruje `src/` do `dist/`.
 
 .DESCRIPTION
-    Celá aplikácia leží v `src\`, preto je build obyčajné skopírovanie
+    Celá aplikácia leží v `src/`, preto je build obyčajné skopírovanie
     priečinka. Nový súbor (napr. ďalší hook) sa do balíka dostane sám, bez
-    zásahu do pipeline. `tests\`, `ci\` a `README.md` sú mimo `src\`, takže sa
+    zásahu do pipeline. `tests/`, `ci/` a `README.md` sú mimo `src/`, takže sa
     do balíka nedostanú.
 
 .EXAMPLE
-    .\ci\Build-Package.ps1 -Source src -Destination dist
+    ./ci/Build-Package.ps1 -Source src -Destination dist
 #>
 [CmdletBinding()]
 param(

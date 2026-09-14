@@ -92,7 +92,7 @@ tag-triggered runs and is skipped otherwise.
 | Stage          | What it does                                                        |
 | -------------- | ------------------------------------------------------------------- |
 | `Build`        | Checks the required files exist, copies `src/` into `dist/`, guards against `type="module"`. |
-| `Verify`       | Two parallel jobs: `node --test tests\` and `node --check` over every script in `src/`. |
+| `Verify`       | Two parallel jobs: `node --test tests/` and `node --check` over every script in `src/`. |
 | `Package`      | Republishes the verified build as the `app` artifact.               |
 | `VersionCheck` | Tag runs only: the tag must be `vX.Y.Z` and point at a commit in `main`. |
 
@@ -101,7 +101,7 @@ The config repo consumes the tag this pipeline verifies.
 ### `ci/`
 
 Anything longer than a one-liner lives in a script rather than inline in the
-YAML, so it can be run and debugged locally — `.\ci\Build-Package.ps1` behaves
+YAML, so it can be run and debugged locally — `./ci/Build-Package.ps1` behaves
 the same on a workstation as it does on the agent. Only the single-line test
 command is still inline.
 
@@ -118,6 +118,12 @@ the agent already has v20 or newer and fails with a clear message if it does
 not. Installing Node is part of preparing the machines in the pool, not part of
 every run: the agents are on-prem and a per-run download is both slow and a
 dependency on internet access they may not have.
+
+The pipeline runs on Linux agents (`Pool1_Linux`), so the steps use `pwsh`
+rather than `powershell` and **PowerShell 7 must be installed on every agent in
+the pool** alongside Node and git. The scripts themselves are cross-platform:
+they build paths with `Join-Path` and shell out only to `node` and `git`, so the
+same script runs on a Windows workstation and on the Linux agent.
 
 Names follow PowerShell's `Verb-Noun` convention using approved verbs, so
 `Get-Verb` stays meaningful and the scripts read the same way as any other

@@ -9,7 +9,7 @@
     Vyžaduje celú históriu (`fetchDepth: 0`), nie plytký klon.
 
 .EXAMPLE
-    .\ci\Test-ReleaseTag.ps1 -Tag v1.2.1 -Branch main
+    ./ci/Test-ReleaseTag.ps1 -Tag v1.2.1 -Branch main
 #>
 [CmdletBinding()]
 param(
