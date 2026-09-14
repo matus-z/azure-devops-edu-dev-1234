@@ -42,7 +42,7 @@ pr:
       - main
 
 pool:
-  name: Pool1_Linux
+  name: Pool1-Linux
 
 stages:
 

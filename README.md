@@ -119,7 +119,7 @@ not. Installing Node is part of preparing the machines in the pool, not part of
 every run: the agents are on-prem and a per-run download is both slow and a
 dependency on internet access they may not have.
 
-The pipeline runs on Linux agents (`Pool1_Linux`), so the steps use `pwsh`
+The pipeline runs on Linux agents (`Pool1-Linux`), so the steps use `pwsh`
 rather than `powershell` and **PowerShell 7 must be installed on every agent in
 the pool** alongside Node and git. The scripts themselves are cross-platform:
 they build paths with `Join-Path` and shell out only to `node` and `git`, so the
