@@ -20,7 +20,7 @@ Fill in the policyholder and claim details, then click **Calculate payout**.
 | `src/app.js`        | UI glue — reads the form, calls the core, renders the result.   |
 | `src/hooks/`        | Optional hooks that replace `InsuranceCalc.finalize`.           |
 | `tests/`            | Automated tests (`node --test`).                                |
-| `ci/`               | PowerShell scripts the pipeline steps call.                     |
+| `ci/`               | Bash scripts the pipeline steps call.                           |
 | `azure-pipelines.yml` | The pipeline — see below.                                     |
 
 Everything that ships lives under `src/`, and nothing else does. That is what
@@ -101,34 +101,38 @@ The config repo consumes the tag this pipeline verifies.
 ### `ci/`
 
 Anything longer than a one-liner lives in a script rather than inline in the
-YAML, so it can be run and debugged locally — `./ci/Build-Package.ps1` behaves
-the same on a workstation as it does on the agent. Only the single-line test
-command is still inline.
+YAML, so it can be run and debugged locally — `./ci/build-package.sh` behaves
+the same in a shell as it does on the agent. Only the single-line test command
+is still inline.
 
 | Script                       | Called by      |
 | ---------------------------- | -------------- |
-| `Build-Package.ps1`          | `Build`        |
-| `Test-FileProtocol.ps1`      | `Build`        |
-| `Test-JavaScriptSyntax.ps1`  | `Verify / lint`|
-| `Test-ReleaseTag.ps1`        | `VersionCheck` |
-| `Test-NodeVersion.ps1`       | `Verify` (both jobs) |
+| `build-package.sh`           | `Build`        |
+| `test-file-protocol.sh`      | `Build`        |
+| `test-javascript-syntax.sh`  | `Verify / lint`|
+| `test-release-tag.sh`        | `VersionCheck` |
+| `test-node-version.sh`       | `Verify` (both jobs) |
 
-The pipeline does not install Node — `Test-NodeVersion.ps1` only checks that
+The pipeline does not install Node — `test-node-version.sh` only checks that
 the agent already has v20 or newer and fails with a clear message if it does
 not. Installing Node is part of preparing the machines in the pool, not part of
 every run: the agents are on-prem and a per-run download is both slow and a
 dependency on internet access they may not have.
 
-The pipeline runs on Linux agents (`Pool1-Linux`), so the steps use `pwsh`
-rather than `powershell` and **PowerShell 7 must be installed on every agent in
-the pool** alongside Node and git. The scripts themselves are cross-platform:
-they build paths with `Join-Path` and shell out only to `node` and `git`, so the
-same script runs on a Windows workstation and on the Linux agent.
+The pipeline runs on Linux agents (`Pool1-Linux`). The steps use `bash`, and
+the only things the agents need installed are **Node 20+ and git** — no
+PowerShell. That is deliberate: these agents are on-prem behind a TLS-inspecting
+proxy, so every runtime dependency the pipeline adds is something that has to be
+installed by hand on each machine and can fail to download. `bash` and
+`coreutils` are already on any Linux agent, which makes them the cheapest thing
+to depend on.
 
-Names follow PowerShell's `Verb-Noun` convention using approved verbs, so
-`Get-Verb` stays meaningful and the scripts read the same way as any other
-cmdlet. Each takes parameters with sensible defaults instead of reading
-pipeline variables directly — that is what makes them runnable outside CI.
+The trade-off is that the scripts no longer run on a Windows workstation as-is —
+debugging them locally means WSL, macOS, or a Linux box.
+
+Each script uses `set -euo pipefail` and takes long options with sensible
+defaults (`--source`, `--page`, `--tag`) instead of reading pipeline variables
+directly — that is what makes them runnable outside CI.
 Failures are reported with `##vso[task.logissue type=error]` and a non-zero
 exit code.
 
