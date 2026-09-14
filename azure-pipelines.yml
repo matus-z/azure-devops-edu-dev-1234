@@ -62,11 +62,8 @@ stages:
 
     - checkout: self
 
-    - task: NodeTool@0
-      inputs:
-        versionSpec: '20.x'
-      displayName: Node.js
-
+    # Node sa tu nepoužíva — Build-Package.ps1 ani Test-FileProtocol.ps1 ho
+    # nepotrebujú, preto sa tu nič neinštaluje ani neoveruje.
     - pwsh: ./ci/Build-Package.ps1 -Source src -Destination dist
       displayName: Build — príprava dist/
 
@@ -92,10 +89,11 @@ stages:
       clean: all
     steps:
     - checkout: self
-    - task: NodeTool@0
-      inputs:
-        versionSpec: '20.x'
-      displayName: Node.js
+    # Node je na agentoch nainštalovaný pri príprave stroja — pipeline ho
+    # nesťahuje. `NodeTool@0` by ho ťahal z internetu pri každom behu, čo na
+    # on-prem agentoch bez konektivity (alebo za TLS proxy) zlyhá.
+    - pwsh: ./ci/Test-NodeVersion.ps1 -MinimumMajor 20
+      displayName: Kontrola — Node.js na agentovi
 
     - pwsh: |
         node --test --test-reporter=spec tests/
@@ -115,10 +113,11 @@ stages:
       clean: all
     steps:
     - checkout: self
-    - task: NodeTool@0
-      inputs:
-        versionSpec: '20.x'
-      displayName: Node.js
+    # Node je na agentoch nainštalovaný pri príprave stroja — pipeline ho
+    # nesťahuje. `NodeTool@0` by ho ťahal z internetu pri každom behu, čo na
+    # on-prem agentoch bez konektivity (alebo za TLS proxy) zlyhá.
+    - pwsh: ./ci/Test-NodeVersion.ps1 -MinimumMajor 20
+      displayName: Kontrola — Node.js na agentovi
 
     - pwsh: ./ci/Test-JavaScriptSyntax.ps1 -Path src
       displayName: Kontrola syntaxe
