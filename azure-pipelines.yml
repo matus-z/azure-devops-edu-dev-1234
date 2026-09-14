@@ -31,6 +31,7 @@ trigger:
     include:
       - main
       - 'f*'          # feature vetvy: f1-region, f3-malus, ...
+      - 'azure-*'     # Azure testing
   tags:
     include:
       - 'v*'          # tag spustí beh navyše — pozri stage TagGuard
