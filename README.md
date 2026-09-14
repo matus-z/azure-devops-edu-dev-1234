@@ -65,7 +65,7 @@ parallel, jobs side by side run one after the other.
 ```mermaid
 flowchart LR
   subgraph S1["1 · Build"]
-    b["Zostavenie aplikácie<br/>src/ → dist/"]
+    b["Overenie balíka<br/>src/"]
   end
   subgraph S2["2 · Overenie — dva joby súbežne"]
     t["Automatické testy<br/>node --test tests/"]
@@ -91,7 +91,7 @@ tag-triggered runs and is skipped otherwise.
 
 | Stage          | What it does                                                        |
 | -------------- | ------------------------------------------------------------------- |
-| `Build`        | Checks the required files exist, copies `src/` into `dist/`, guards against `type="module"`. |
+| `Build`        | Checks the required files exist, guards against `type="module"`, publishes `src/` as the artifact. |
 | `Verify`       | Two parallel jobs: `node --test tests/` and `node --check` over every script in `src/`. |
 | `Package`      | Republishes the verified build as the `app` artifact.               |
 | `VersionCheck` | Tag runs only: the tag must be `vX.Y.Z` and point at a commit in `main`. |
@@ -101,13 +101,13 @@ The config repo consumes the tag this pipeline verifies.
 ### `ci/`
 
 Anything longer than a one-liner lives in a script rather than inline in the
-YAML, so it can be run and debugged locally — `./ci/build-package.sh` behaves
+YAML, so it can be run and debugged locally — `./ci/test-package-contents.sh` behaves
 the same in a shell as it does on the agent. Only the single-line test command
 is still inline.
 
 | Script                       | Called by      |
 | ---------------------------- | -------------- |
-| `build-package.sh`           | `Build`        |
+| `test-package-contents.sh`   | `Build`        |
 | `test-file-protocol.sh`      | `Build`        |
 | `test-javascript-syntax.sh`  | `Verify / lint`|
 | `test-release-tag.sh`        | `VersionCheck` |

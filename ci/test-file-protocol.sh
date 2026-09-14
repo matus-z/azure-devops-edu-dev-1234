@@ -7,11 +7,11 @@
 # zostaveným balíkom.
 #
 # Použitie:
-#   ./ci/test-file-protocol.sh [--page dist/index.html]
+#   ./ci/test-file-protocol.sh [--page src/index.html]
 
 set -euo pipefail
 
-page="dist/index.html"
+page="src/index.html"
 
 while [ $# -gt 0 ]; do
   case "$1" in

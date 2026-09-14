@@ -6,8 +6,8 @@
 #  ┌─ 1 · Build ──────┐    │                       │  ┌──▶│ │ artefakt `app`      │ │
 #  │                  │    │ ┌───────────────────┐ │  │   │ └─────────────────────┘ │
 #  │ ┌──────────────┐ │    │ │ Automatické testy │ │  │   └─────────────────────────┘
-#  │ │ Zostavenie   │ │    │ └───────────────────┘ │  │
-#  │ │ src/ → dist/ │ │───▶│   ‖ súbežne           │──┤
+#  │ │ Overenie     │ │    │ └───────────────────┘ │  │
+#  │ │ balíka src/  │ │───▶│   ‖ súbežne           │──┤
 #  │ └──────────────┘ │    │ ┌───────────────────┐ │  │
 #  └──────────────────┘    │ │ Statická kontrola │ │  │
 #                          │ └───────────────────┘ │  │
@@ -53,25 +53,27 @@ stages:
   displayName: Build
   jobs:
   - job: build
-    displayName: Zostavenie aplikácie
+    displayName: Overenie a publikovanie balíka
     # Agenti v pooli sú vlastné stroje a workspace sa medzi behmi recykluje.
-    # Bez tohto by `dist/` ťahal staré súbory z predchádzajúcej verzie.
+    # Bez tohto by v `src/` mohli ostať súbory z predchádzajúcej verzie.
     workspace:
       clean: all
     steps:
 
     - checkout: self
 
-    # Node sa tu nepoužíva — build-package.sh ani test-file-protocol.sh ho
-    # nepotrebujú, preto sa tu nič neinštaluje ani neoveruje.
-    - bash: ./ci/build-package.sh --source src --destination dist
-      displayName: Build — príprava dist/
+    # Nekopírujeme nič: `src/` je presne to, čo sa publikuje, takže balík je
+    # samotný `src/`. Build tu znamená overenie, nie zostavenie — pipeline
+    # nevytvára žiadny priečinok, takže nepotrebuje ani právo zápisu doň.
+    # Node sa tu nepoužíva, preto sa tu nič neinštaluje ani neoveruje.
+    - bash: ./ci/test-package-contents.sh --path src
+      displayName: Kontrola — balík obsahuje povinné súbory
 
     # Aplikácia sa musí dať otvoriť dvojklikom — `type="module"` by to rozbilo.
-    - bash: ./ci/test-file-protocol.sh --page dist/index.html
+    - bash: ./ci/test-file-protocol.sh --page src/index.html
       displayName: Kontrola — otvoriteľnosť z file://
 
-    - publish: dist
+    - publish: src
       artifact: build-output
       displayName: Odovzdanie buildu ďalším stage
 
