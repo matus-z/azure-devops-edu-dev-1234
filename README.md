@@ -113,15 +113,16 @@ is still inline.
 | `test-release-tag.sh`        | `VersionCheck` |
 | `test-node-version.sh`       | `Verify` (both jobs) |
 
-The pipeline does not install Node — `test-node-version.sh` only checks that
-the agent already has v20 or newer and fails with a clear message if it does
-not. Installing Node is part of preparing the machines in the pool, not part of
-every run: the agents are on-prem and a per-run download is both slow and a
-dependency on internet access they may not have.
+The pipeline installs Node itself: both `Verify` jobs run `NodeTool@0` with
+`versionSpec: 20.x`, then `test-node-version.sh` checks that v20 or newer really
+ended up on `PATH`. `NodeTool@0` downloads from nodejs.org into the agent's tool
+cache (`_work/_tool`), which `workspace: clean: all` does not wipe — so it
+downloads once per agent, not once per run. The agents do need to reach
+nodejs.org, through the proxy if there is one.
 
 The pipeline runs on Linux agents (`Pool1-Linux`). The steps use `bash`, and
-the only things the agents need installed are **Node 20+ and git** — no
-PowerShell. That is deliberate: these agents are on-prem behind a TLS-inspecting
+the only thing the agents need installed is **git** — no PowerShell, and
+Node comes from `NodeTool@0` (see above). That is deliberate: these agents are on-prem behind a TLS-inspecting
 proxy, so every runtime dependency the pipeline adds is something that has to be
 installed by hand on each machine and can fail to download. `bash` and
 `coreutils` are already on any Linux agent, which makes them the cheapest thing

@@ -96,9 +96,16 @@ stages:
       clean: all
     steps:
     - checkout: self
-    # Node je na agentoch nainštalovaný pri príprave stroja — pipeline ho
-    # nesťahuje. `NodeTool@0` by ho ťahal z internetu pri každom behu, čo na
-    # on-prem agentoch bez konektivity (alebo za TLS proxy) zlyhá.
+    # Node na agentoch nie je, preto ho inštaluje pipeline. `NodeTool@0` ho
+    # stiahne z nodejs.org do tool cache agenta (`_work/_tool`) — ten
+    # `workspace: clean` nemaže, takže sa sťahuje raz na agenta, nie pri každom behu.
+    # Agent preto potrebuje prístup na nodejs.org (aj cez proxy).
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+      displayName: Inštalácia Node.js
+
+    # Overí, že inštalácia naozaj dala na PATH správnu verziu.
     - bash: bash ./ci/test-node-version.sh --minimum-major 20
       displayName: Kontrola — Node.js na agentovi
 
@@ -120,9 +127,16 @@ stages:
       clean: all
     steps:
     - checkout: self
-    # Node je na agentoch nainštalovaný pri príprave stroja — pipeline ho
-    # nesťahuje. `NodeTool@0` by ho ťahal z internetu pri každom behu, čo na
-    # on-prem agentoch bez konektivity (alebo za TLS proxy) zlyhá.
+    # Node na agentoch nie je, preto ho inštaluje pipeline. `NodeTool@0` ho
+    # stiahne z nodejs.org do tool cache agenta (`_work/_tool`) — ten
+    # `workspace: clean` nemaže, takže sa sťahuje raz na agenta, nie pri každom behu.
+    # Agent preto potrebuje prístup na nodejs.org (aj cez proxy).
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+      displayName: Inštalácia Node.js
+
+    # Overí, že inštalácia naozaj dala na PATH správnu verziu.
     - bash: bash ./ci/test-node-version.sh --minimum-major 20
       displayName: Kontrola — Node.js na agentovi
 
