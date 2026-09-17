@@ -6,21 +6,143 @@ server, no npm install.
 
 ## Usage
 
-Open `index.html` in a browser.
+Open `src/index.html` in a browser.
 
 Fill in the policyholder and claim details, then click **Calculate payout**.
 
 ## Project structure
 
-| File         | Responsibility                                                        |
-| ------------ | --------------------------------------------------------------------- |
-| `index.html` | Form markup and page layout.                                          |
-| `style.css`  | Styling.                                                              |
-| `calc.js`    | Core payout calculation (`InsuranceCalc.calculatePayout`).            |
-| `app.js`     | UI glue — reads the form, calls the core, renders the result.         |
+| Path                | Responsibility                                                  |
+| ------------------- | --------------------------------------------------------------- |
+| `src/index.html`    | Form markup and page layout.                                    |
+| `src/style.css`     | Styling.                                                        |
+| `src/calc.js`       | Core payout calculation (`InsuranceCalc.calculatePayout`).      |
+| `src/app.js`        | UI glue — reads the form, calls the core, renders the result.   |
+| `src/hooks/`        | Optional hooks that replace `InsuranceCalc.finalize`.           |
+| `tests/`            | Automated tests (`node --test`).                                |
+| `ci/`               | Bash scripts the pipeline steps call.                           |
+| `azure-pipelines.yml` | The pipeline — see below.                                     |
+
+Everything that ships lives under `src/`, and nothing else does. That is what
+lets the pipeline build the package with a plain directory copy: a new file in
+`src/` reaches the artifact on its own, and `tests/` and this README stay out of
+it without having to be excluded.
 
 The calculation logic (`calc.js`) is deliberately kept separate from the UI glue
 (`app.js`) so that changes to the formula only touch `calc.js`.
+
+## Tests
+
+The tests run on the Node.js built-in test runner — no dependencies, no
+`npm install`:
+
+```
+node --test tests/
+```
+
+Each test loads the browser scripts into a fresh `vm` context with a `window`
+object, and — for `app.js` — a minimal fake `document`
+(`tests/helpers/load.js`). A fresh context per test matters: hooks *replace*
+`InsuranceCalc.finalize`, so leaked state would quietly change what is being
+measured.
+
+| File                    | Covers                                                     |
+| ----------------------- | ---------------------------------------------------------- |
+| `tests/calc.test.js`    | The core formula and the `finalize` extension point.        |
+| `tests/hooks.test.js`   | Each hook on its own, and the two of them together.         |
+| `tests/app.test.js`     | Reading the form, calling the core, rendering the result.   |
+
+Tests named `KNOWN GAP:` pin behaviour that today contradicts what the code
+documents. They are there so the behaviour is visible and so a future fix
+shows up as a failing test rather than a silent change.
+
+## Pipeline
+
+`azure-pipelines.yml` — four stages, left to right. Everything a stage does is
+drawn inside its own container; jobs stacked on top of each other run in
+parallel, jobs side by side run one after the other.
+
+```mermaid
+flowchart LR
+  subgraph S1["1 · Build"]
+    b["Overenie balíka<br/>src/"]
+  end
+  subgraph S2["2 · Overenie — dva joby súbežne"]
+    t["Automatické testy<br/>node --test tests/"]
+    l["Statická kontrola<br/>node --check src/"]
+  end
+  subgraph S3["3 · Balík"]
+    p["Publikovanie overeného balíka<br/>artefakt app"]
+  end
+  subgraph S4["4 · Kontrola verzie"]
+    v["Tag ukazuje na main<br/>len pri behu z tagu v*"]
+  end
+  b --> t
+  b --> l
+  t --> p
+  l --> p
+  t -.-> v
+  l -.-> v
+```
+
+`Package` and `VersionCheck` both depend on `Verify` only, so they too run in
+parallel — the dashed edges mark `VersionCheck` as conditional: it runs on
+tag-triggered runs and is skipped otherwise.
+
+| Stage          | What it does                                                        |
+| -------------- | ------------------------------------------------------------------- |
+| `Build`        | Checks the required files exist, guards against `type="module"`, publishes `src/` as the artifact. |
+| `Verify`       | Two parallel jobs: `node --test tests/` and `node --check` over every script in `src/`. |
+| `Package`      | Republishes the verified build as the `app` artifact.               |
+| `VersionCheck` | Tag runs only: the tag must be `vX.Y.Z` and point at a commit in `main`. |
+
+The config repo consumes the tag this pipeline verifies.
+
+### `ci/`
+
+Anything longer than a one-liner lives in a script rather than inline in the
+YAML, so it can be run and debugged locally — `./ci/test-package-contents.sh` behaves
+the same in a shell as it does on the agent. Only the single-line test command
+is still inline.
+
+| Script                       | Called by      |
+| ---------------------------- | -------------- |
+| `test-package-contents.sh`   | `Build`        |
+| `test-file-protocol.sh`      | `Build`        |
+| `test-javascript-syntax.sh`  | `Verify / lint`|
+| `test-release-tag.sh`        | `VersionCheck` |
+| `test-node-version.sh`       | `Verify` (both jobs) |
+| `use-agent-node.sh`          | `Verify` (both jobs) |
+
+The pipeline neither downloads nor installs Node. Every Azure Pipelines agent
+ships its own Node under `externals/node*/bin/node` for running tasks, and
+`use-agent-node.sh` puts the newest one that actually runs and is v20 or newer
+on `PATH` for the rest of the job. `test-node-version.sh` then confirms it.
+
+`NodeTool@0` was tried and dropped: it downloads from nodejs.org, and behind the
+TLS-inspecting proxy that fails with *unable to get local issuer certificate*.
+
+The catch is that `externals/` is internal to the agent, not a supported
+interface. An agent too old to bundle Node 20 — or a future agent that lays the
+folder out differently — makes `use-agent-node.sh` fail with a message saying
+so; the fix then is a newer agent or Node installed on the machines.
+
+The pipeline runs on Linux agents (`Pool1-Linux`). The steps use `bash`, and
+the only thing the agents need installed is **git** — no PowerShell, and
+Node comes bundled with the agent (see above). That is deliberate: these agents are on-prem behind a TLS-inspecting
+proxy, so every runtime dependency the pipeline adds is something that has to be
+installed by hand on each machine and can fail to download. `bash` and
+`coreutils` are already on any Linux agent, which makes them the cheapest thing
+to depend on.
+
+The trade-off is that the scripts no longer run on a Windows workstation as-is —
+debugging them locally means WSL, macOS, or a Linux box.
+
+Each script uses `set -euo pipefail` and takes long options with sensible
+defaults (`--source`, `--page`, `--tag`) instead of reading pipeline variables
+directly — that is what makes them runnable outside CI.
+Failures are reported with `##vso[task.logissue type=error]` and a non-zero
+exit code.
 
 ## Extending the calculation
 

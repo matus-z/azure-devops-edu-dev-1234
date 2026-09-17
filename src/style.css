@@ -203,3 +203,10 @@ select:focus {
   font-weight: 700;
   color: var(--accent);
 }
+
+.app__footer {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: right;
+}

@@ -1,0 +1,186 @@
+# =============================================================================
+#  Kalkulačka poistenia — pipeline dodávateľa (repozitár `EDU/Dev`)
+#
+#                          ┌─ 2 · Overenie ────────┐      ┌─ 3 · Balík ─────────────┐
+#                          │                       │      │ ┌─────────────────────┐ │
+#  ┌─ 1 · Build ──────┐    │                       │  ┌──▶│ │ artefakt `app`      │ │
+#  │                  │    │ ┌───────────────────┐ │  │   │ └─────────────────────┘ │
+#  │ ┌──────────────┐ │    │ │ Automatické testy │ │  │   └─────────────────────────┘
+#  │ │ Overenie     │ │    │ └───────────────────┘ │  │
+#  │ │ balíka src/  │ │───▶│   ‖ súbežne           │──┤
+#  │ └──────────────┘ │    │ ┌───────────────────┐ │  │
+#  └──────────────────┘    │ │ Statická kontrola │ │  │
+#                          │ └───────────────────┘ │  │
+#                          │                       │  │   ┌─ 4 · Kontrola verzie ───┐
+#                          └───────────────────────┘  │   │ ┌─────────────────────┐ │
+#                                                     └──▶│ │ Tag ukazuje na main │ │
+#                                                         │ └─────────────────────┘ │
+#                                                         └─ len pri tagu v* ───────┘
+#
+#  Tento súbor patrí dodávateľovi. Účastníci workshopu doň nesiahajú — ale mali
+#  by ho vidieť, aby chápali, čo sa deje na druhej strane dodávky: dodávateľ
+#  testuje u seba, a až potom vznikne tag, na ktorý sa odkazuje konfiguračný
+#  repozitár.
+#
+#  Dlhšie kroky nie sú inline — sú v `ci/*.sh`, aby sa dali spustiť a ladiť
+#  aj lokálne, mimo pipeline. Inline tu ostávajú len jednoriadkové príkazy.
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - 'f*'          # feature vetvy: f1-region, f3-malus, ...
+      - 'azure-*'     # Azure testing
+  tags:
+    include:
+      - 'v*'          # tag spustí beh navyše — pozri stage VersionCheck
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  name: Pool1-Linux
+
+stages:
+
+# -----------------------------------------------------------------------------
+# 1. BUILD
+# -----------------------------------------------------------------------------
+- stage: Build
+  displayName: Build
+  jobs:
+  - job: build
+    displayName: Overenie a publikovanie balíka
+    # Agenti v pooli sú vlastné stroje a workspace sa medzi behmi recykluje.
+    # Bez tohto by v `src/` mohli ostať súbory z predchádzajúcej verzie.
+    workspace:
+      clean: all
+    steps:
+
+    - checkout: self
+
+    # Nekopírujeme nič: `src/` je presne to, čo sa publikuje, takže balík je
+    # samotný `src/`. Build tu znamená overenie, nie zostavenie — pipeline
+    # nevytvára žiadny priečinok, takže nepotrebuje ani právo zápisu doň.
+    # Node sa tu nepoužíva, preto sa tu nič neinštaluje ani neoveruje.
+    - bash: bash ./ci/test-package-contents.sh --path src
+      displayName: Kontrola — balík obsahuje povinné súbory
+
+    # Aplikácia sa musí dať otvoriť dvojklikom — `type="module"` by to rozbilo.
+    - bash: bash ./ci/test-file-protocol.sh --page src/index.html
+      displayName: Kontrola — otvoriteľnosť z file://
+
+    # Build artifacts, nie pipeline artifacts: skratky `publish:` / `download:`
+    # volajú PublishPipelineArtifact, ktorý tento Azure DevOps Server nepodporuje
+    # ("Pipeline artifact task is not supported, please use build artifact task").
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: $(Build.SourcesDirectory)/src
+        ArtifactName: build-output
+      displayName: Odovzdanie buildu ďalším stage
+
+# -----------------------------------------------------------------------------
+# 2. VERIFY — dva joby bežia SÚBEŽNE
+# -----------------------------------------------------------------------------
+- stage: Verify
+  displayName: Overenie
+  dependsOn: Build
+  jobs:
+
+  - job: test
+    displayName: Automatické testy
+    workspace:
+      clean: all
+    steps:
+    - checkout: self
+    # Node sa nesťahuje: použije sa ten, ktorý je pribalený k agentovi.
+    # `NodeTool@0` by ho ťahal z nodejs.org a za TLS proxy zlyhá na certifikáte.
+    - bash: bash ./ci/use-agent-node.sh --minimum-major 20
+      displayName: Node.js pribalený k agentovi
+
+    # Overí, že na PATH je naozaj správna verzia.
+    - bash: bash ./ci/test-node-version.sh --minimum-major 20
+      displayName: Kontrola — Node.js na agentovi
+
+    - bash: |
+        node --test --test-reporter=spec tests/
+      displayName: Spustenie testov
+
+    # Ak testy pridáte s výstupom do JUnit XML, výsledky sa zobrazia
+    # v záložke Tests namiesto surového logu:
+    # - task: PublishTestResults@2
+    #   inputs:
+    #     testResultsFormat: JUnit
+    #     testResultsFiles: 'test-results.xml'
+    #   condition: succeededOrFailed()
+
+  - job: lint
+    displayName: Statická kontrola
+    workspace:
+      clean: all
+    steps:
+    - checkout: self
+    # Node sa nesťahuje: použije sa ten, ktorý je pribalený k agentovi.
+    # `NodeTool@0` by ho ťahal z nodejs.org a za TLS proxy zlyhá na certifikáte.
+    - bash: bash ./ci/use-agent-node.sh --minimum-major 20
+      displayName: Node.js pribalený k agentovi
+
+    # Overí, že na PATH je naozaj správna verzia.
+    - bash: bash ./ci/test-node-version.sh --minimum-major 20
+      displayName: Kontrola — Node.js na agentovi
+
+    - bash: bash ./ci/test-javascript-syntax.sh --path src
+      displayName: Kontrola syntaxe
+
+# -----------------------------------------------------------------------------
+# 3. PACKAGE — overený balík, ktorý si vie stiahnuť aj dodávateľ aj zákazník
+# -----------------------------------------------------------------------------
+- stage: Package
+  displayName: Balík
+  dependsOn: Verify
+  jobs:
+  - job: package
+    displayName: Publikovanie overeného balíka
+    workspace:
+      clean: all
+    steps:
+    - checkout: none
+    # Stiahne do $(Pipeline.Workspace)/build-output — rovnaké miesto ako predtým.
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: current
+        downloadType: single
+        artifactName: build-output
+        downloadPath: $(Pipeline.Workspace)
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: $(Pipeline.Workspace)/build-output
+        ArtifactName: app
+      displayName: Artefakt `app`
+
+# -----------------------------------------------------------------------------
+# 4. VERSION CHECK — beží LEN pri behu spustenom tagom
+#
+#    Zmyslom je, aby tag nikdy neoznačoval niečo, čo neprešlo `main`.
+#    Presne toto je vec, ktorú konfiguračný repozitár nevie overiť — on tagu
+#    verí. Tu sa dá overiť.
+# -----------------------------------------------------------------------------
+- stage: VersionCheck
+  displayName: Kontrola verzie
+  dependsOn: Verify
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'))
+  jobs:
+  - job: versioncheck
+    displayName: Tag ukazuje na main
+    workspace:
+      clean: all
+    steps:
+    - checkout: self
+      persistCredentials: true
+      fetchDepth: 0          # potrebujeme celú históriu, nie plytký klon
+
+    - bash: bash ./ci/test-release-tag.sh --tag "$(Build.SourceBranchName)" --branch main
+      displayName: Overenie tagu

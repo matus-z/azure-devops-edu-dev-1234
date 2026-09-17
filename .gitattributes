@@ -1,0 +1,2 @@
+# Shell skripty v `ci/` musia mať LF, inak Linux agent neprečíta shebang.
+*.sh text eol=lf
