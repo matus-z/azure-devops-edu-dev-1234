@@ -2,9 +2,9 @@
 #
 # Overí, že na agentovi je nainštalovaný Node.js v požadovanej verzii.
 #
-# Node inštaluje pipeline krokom `NodeTool@0`; tento skript nič neinštaluje,
-# len overí a vypíše, čo je na PATH — aby zlá alebo chýbajúca inštalácia
-# zlyhala tu, a nie až uprostred testov.
+# Node dáva na PATH `use-agent-node.sh`; tento skript nič neinštaluje, len
+# overí a vypíše, čo je na PATH — aby zlá verzia zlyhala tu, a nie až
+# uprostred testov.
 # Ak Node chýba alebo je starý, zlyhá hlasne a s návodom čo urobiť.
 #
 # Použitie:

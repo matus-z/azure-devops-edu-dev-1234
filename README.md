@@ -112,17 +112,24 @@ is still inline.
 | `test-javascript-syntax.sh`  | `Verify / lint`|
 | `test-release-tag.sh`        | `VersionCheck` |
 | `test-node-version.sh`       | `Verify` (both jobs) |
+| `use-agent-node.sh`          | `Verify` (both jobs) |
 
-The pipeline installs Node itself: both `Verify` jobs run `NodeTool@0` with
-`versionSpec: 20.x`, then `test-node-version.sh` checks that v20 or newer really
-ended up on `PATH`. `NodeTool@0` downloads from nodejs.org into the agent's tool
-cache (`_work/_tool`), which `workspace: clean: all` does not wipe — so it
-downloads once per agent, not once per run. The agents do need to reach
-nodejs.org, through the proxy if there is one.
+The pipeline neither downloads nor installs Node. Every Azure Pipelines agent
+ships its own Node under `externals/node*/bin/node` for running tasks, and
+`use-agent-node.sh` puts the newest one that actually runs and is v20 or newer
+on `PATH` for the rest of the job. `test-node-version.sh` then confirms it.
+
+`NodeTool@0` was tried and dropped: it downloads from nodejs.org, and behind the
+TLS-inspecting proxy that fails with *unable to get local issuer certificate*.
+
+The catch is that `externals/` is internal to the agent, not a supported
+interface. An agent too old to bundle Node 20 — or a future agent that lays the
+folder out differently — makes `use-agent-node.sh` fail with a message saying
+so; the fix then is a newer agent or Node installed on the machines.
 
 The pipeline runs on Linux agents (`Pool1-Linux`). The steps use `bash`, and
 the only thing the agents need installed is **git** — no PowerShell, and
-Node comes from `NodeTool@0` (see above). That is deliberate: these agents are on-prem behind a TLS-inspecting
+Node comes bundled with the agent (see above). That is deliberate: these agents are on-prem behind a TLS-inspecting
 proxy, so every runtime dependency the pipeline adds is something that has to be
 installed by hand on each machine and can fail to download. `bash` and
 `coreutils` are already on any Linux agent, which makes them the cheapest thing
