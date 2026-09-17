@@ -73,8 +73,13 @@ stages:
     - bash: bash ./ci/test-file-protocol.sh --page src/index.html
       displayName: Kontrola — otvoriteľnosť z file://
 
-    - publish: src
-      artifact: build-output
+    # Build artifacts, nie pipeline artifacts: skratky `publish:` / `download:`
+    # volajú PublishPipelineArtifact, ktorý tento Azure DevOps Server nepodporuje
+    # ("Pipeline artifact task is not supported, please use build artifact task").
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: $(Build.SourcesDirectory)/src
+        ArtifactName: build-output
       displayName: Odovzdanie buildu ďalším stage
 
 # -----------------------------------------------------------------------------
@@ -137,10 +142,17 @@ stages:
       clean: all
     steps:
     - checkout: none
-    - download: current
-      artifact: build-output
-    - publish: $(Pipeline.Workspace)/build-output
-      artifact: app
+    # Stiahne do $(Pipeline.Workspace)/build-output — rovnaké miesto ako predtým.
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: current
+        downloadType: single
+        artifactName: build-output
+        downloadPath: $(Pipeline.Workspace)
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: $(Pipeline.Workspace)/build-output
+        ArtifactName: app
       displayName: Artefakt `app`
 
 # -----------------------------------------------------------------------------
