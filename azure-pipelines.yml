@@ -1,5 +1,5 @@
 # =============================================================================
-#  Kalkulačka poistenia — pipeline dodávateľa (repozitár `EDU/Dev`)
+#  Kalkulačka poistenia — pipeline dodávateľa (repozitár `EDU/EDU`)
 #
 #                          ┌─ 2 · Overenie ────────┐      ┌─ 3 · Balík ─────────────┐
 #                          │                       │      │ ┌─────────────────────┐ │
